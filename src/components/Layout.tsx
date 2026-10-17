@@ -45,7 +45,9 @@ export default function Layout({ title, actions, children }: { title: string; ac
     document.title = `${title} · Finanças`;
   }, [title]);
 
-  useEffect(() => window.scrollTo(0, 0), [location.pathname]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   const hide = data.settings.hideValues;
 
