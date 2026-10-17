@@ -31,6 +31,16 @@ npm run preview   # serve o build de produção
 
 O conteúdo de `dist/` pode ser publicado em qualquer hospedagem estática (GitHub Pages, Netlify, Vercel). Ao acessar pelo celular, use "Adicionar à tela inicial" para instalar como app.
 
+## Instalação no celular e no computador
+
+O app é publicado automaticamente no GitHub Pages a cada push (workflow `.github/workflows/deploy.yml`).
+Na primeira vez, ative em **Settings → Pages → Source: GitHub Actions**. O endereço fica no formato
+`https://leonardolira90.github.io/Controle-Financeiro/`.
+
+- **Android (Chrome):** abra o endereço → menu ⋮ → **Instalar app** / **Adicionar à tela inicial**.
+- **iPhone (Safari):** abra o endereço → botão **Compartilhar** → **Adicionar à Tela de Início**.
+- **Computador (Chrome/Edge):** abra o endereço → ícone de instalar na barra de endereço (ou menu → **Instalar Finanças**).
+
 ## Estrutura
 
 ```
