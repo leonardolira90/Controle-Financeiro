@@ -1,0 +1,15 @@
+{
+  "name": "Finanças — Controle Financeiro",
+  "short_name": "Finanças",
+  "description": "Organize sua vida financeira em um só lugar.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f7f9",
+  "theme_color": "#0f766e",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
