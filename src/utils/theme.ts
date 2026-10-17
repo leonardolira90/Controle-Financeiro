@@ -3,6 +3,16 @@ import { useFinance } from '../store/FinanceContext';
 
 const media = () => window.matchMedia('(prefers-color-scheme: dark)');
 
+/** Assina mudanças de media query (com fallback para navegadores antigos sem addEventListener). */
+const subscribe = (mq: MediaQueryList, onChange: () => void) => {
+  if (typeof mq.addEventListener === 'function') {
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }
+  mq.addListener(onChange);
+  return () => mq.removeListener(onChange);
+};
+
 /** Resolve o tema efetivo (configuração do usuário ou do sistema). */
 export function useResolvedTheme(): 'light' | 'dark' {
   const { data } = useFinance();
@@ -10,9 +20,7 @@ export function useResolvedTheme(): 'light' | 'dark' {
 
   useEffect(() => {
     const mq = media();
-    const onChange = () => setSystemDark(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    return subscribe(mq, () => setSystemDark(mq.matches));
   }, []);
 
   const pref = data.settings.theme;
@@ -32,9 +40,7 @@ export function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    return subscribe(mq, () => setReduced(mq.matches));
   }, []);
   return reduced;
 }

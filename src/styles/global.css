@@ -414,7 +414,8 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -0.01em; }
   .grid-4 > .stat-hero ~ :last-child:nth-child(even) { grid-column: 1 / -1; }
   .month-picker span { min-width: 108px; font-size: 13px; }
   .topbar h1 { font-size: 18px; }
-  .toolbar .select { flex: 1; min-width: 0; }
+  .toolbar .search { flex-basis: 100%; }
+  .toolbar .select { flex: 1 1 calc(50% - 5px); min-width: 0; }
 }
 @keyframes slide-up { from { transform: translateY(40px); opacity: 0; } }
 

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
 import { FinanceProvider, useFinance } from './store/FinanceContext';
 import { UIProvider } from './store/UIContext';
 import Dashboard from './pages/Dashboard';
@@ -28,6 +29,17 @@ export default function App() {
       <UIProvider>
         <ThemeSync />
         <HashRouter>
+          <AppRoutes />
+        </HashRouter>
+      </UIProvider>
+    </FinanceProvider>
+  );
+}
+
+function AppRoutes() {
+  const location = useLocation();
+  return (
+    <ErrorBoundary resetKey={location.pathname}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/lancamentos" element={<Transactions />} />
@@ -39,8 +51,6 @@ export default function App() {
             <Route path="/mais" element={<More />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </HashRouter>
-      </UIProvider>
-    </FinanceProvider>
+    </ErrorBoundary>
   );
 }
