@@ -6,6 +6,7 @@ import { UIProvider } from './store/UIContext';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Accounts from './pages/Accounts';
+import Cards from './pages/Cards';
 import Budgets from './pages/Budgets';
 import Goals from './pages/Goals';
 import Reports from './pages/Reports';
@@ -44,6 +45,7 @@ function AppRoutes() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/lancamentos" element={<Transactions />} />
             <Route path="/contas" element={<Accounts />} />
+            <Route path="/cartoes" element={<Cards />} />
             <Route path="/orcamentos" element={<Budgets />} />
             <Route path="/metas" element={<Goals />} />
             <Route path="/relatorios" element={<Reports />} />

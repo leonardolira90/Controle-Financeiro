@@ -4,7 +4,7 @@ import Layout, { NAV } from '../components/Layout';
 
 /** Menu complementar exibido na navegação inferior do celular. */
 export default function More() {
-  const items = NAV.filter((n) => ['/contas', '/orcamentos', '/metas', '/configuracoes'].includes(n.to));
+  const items = NAV.filter((n) => ['/contas', '/cartoes', '/orcamentos', '/metas', '/configuracoes'].includes(n.to));
   return (
     <Layout title="Mais opções">
       <div className="card" style={{ padding: 8 }}>

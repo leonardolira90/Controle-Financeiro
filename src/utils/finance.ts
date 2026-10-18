@@ -3,7 +3,8 @@ import { monthKey, shiftMonth } from './format';
 
 /** Variação do saldo de uma conta causada por um lançamento. */
 export const txDelta = (tx: Transaction, accountId: string) => {
-  if (!tx.paid) return 0;
+  // Compras no cartão não saem da conta: o dinheiro sai quando a fatura é paga
+  if (!tx.paid || (tx.type === 'expense' && tx.cardId)) return 0;
   if (tx.type === 'income' && tx.accountId === accountId) return tx.amount;
   if (tx.type === 'expense' && tx.accountId === accountId) return -tx.amount;
   if (tx.type === 'transfer') {

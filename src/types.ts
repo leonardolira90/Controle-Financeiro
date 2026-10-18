@@ -33,6 +33,23 @@ export interface Transaction {
   notes?: string;
   /** Identifica lançamentos gerados juntos (parcelas/recorrência) */
   groupId?: string;
+  /** Cartão de crédito: em despesas, a compra no cartão; em transferências, o pagamento da fatura */
+  cardId?: string;
+  /** Fatura (mês de vencimento, "YYYY-MM") à qual a compra ou o pagamento pertence */
+  invoice?: string;
+}
+
+export interface CreditCard {
+  id: string;
+  name: string;
+  limit: number;
+  /** Dia do mês em que a fatura fecha */
+  closingDay: number;
+  /** Dia do mês em que a fatura vence */
+  dueDay: number;
+  /** Conta usada por padrão para pagar a fatura */
+  paymentAccountId?: string;
+  color: string;
 }
 
 export interface Budget {
@@ -63,5 +80,6 @@ export interface FinanceData {
   transactions: Transaction[];
   budgets: Budget[];
   goals: Goal[];
+  cards: CreditCard[];
   settings: Settings;
 }

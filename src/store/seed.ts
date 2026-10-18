@@ -1,4 +1,5 @@
-import type { Account, Category, FinanceData, Transaction } from '../types';
+import type { Account, Category, CreditCard, FinanceData, Transaction } from '../types';
+import { invoiceDates, invoiceForDate } from '../utils/cards';
 import { shiftMonth, currentMonthKey, todayISO, uid } from '../utils/format';
 
 /** Paleta categórica validada (ordem fixa) + tons extras para categorias além da oitava. */
@@ -31,6 +32,10 @@ const DEFAULT_ACCOUNTS: Account[] = [
   { id: 'a-carteira', name: 'Carteira', type: 'carteira', initialBalance: 900, color: '#eda100' },
 ];
 
+const DEMO_CARD: CreditCard = {
+  id: 'k-principal', name: 'Cartão principal', limit: 6000, closingDay: 25, dueDay: 5, paymentAccountId: 'a-corrente', color: '#6250d6',
+};
+
 export const emptyData = (): FinanceData => ({
   version: 1,
   accounts: [{ id: 'a-corrente', name: 'Conta corrente', type: 'corrente', initialBalance: 0, color: '#2a78d6' }],
@@ -38,6 +43,7 @@ export const emptyData = (): FinanceData => ({
   transactions: [],
   budgets: [],
   goals: [],
+  cards: [],
   settings: { userName: '', theme: 'system', hideValues: false },
 });
 
@@ -89,6 +95,24 @@ export const demoData = (): FinanceData => {
       add({ type: 'expense', description: 'Farmácia', amount: vary(75, 0.5), date: d(25), categoryId: 'c-saude', accountId: 'a-corrente' });
 
     add({ type: 'transfer', description: 'Reserva mensal', amount: 800, date: d(6), accountId: 'a-corrente', toAccountId: 'a-poupanca' });
+
+    // Compras no cartão de crédito, cada uma com sua categoria
+    const buy = (day: number, description: string, amount: number, categoryId: string) =>
+      add({ type: 'expense', description, amount, date: d(day), categoryId, accountId: '', cardId: DEMO_CARD.id, invoice: invoiceForDate(DEMO_CARD, d(day)), paid: true });
+    buy(8, 'Streaming de música', 21.9, 'c-assinaturas');
+    buy(12, 'Restaurante', vary(140, 0.4), 'c-alimentacao');
+    buy(19, rand() > 0.5 ? 'Loja de roupas' : 'Eletrônicos', vary(320, 0.5), 'c-compras');
+    buy(26, 'Ingressos de show', vary(160, 0.4), 'c-lazer');
+    if (rand() > 0.4) buy(15, 'Farmácia', vary(90, 0.4), 'c-saude');
+  }
+
+  // Pagamento das faturas já vencidas
+  const invoices = [...new Set(txs.filter((t) => t.cardId).map((t) => t.invoice!))];
+  for (const invoice of invoices) {
+    const { due } = invoiceDates(DEMO_CARD, invoice);
+    if (due > today) continue;
+    const total = txs.filter((t) => t.cardId && t.invoice === invoice).reduce((s, t) => s + t.amount, 0);
+    add({ type: 'transfer', description: `Pagamento fatura ${DEMO_CARD.name}`, amount: Math.round(total * 100) / 100, date: due, accountId: 'a-corrente', cardId: DEMO_CARD.id, invoice });
   }
 
   return {
@@ -107,6 +131,7 @@ export const demoData = (): FinanceData => {
       { id: uid(), name: 'Viagem de férias', target: 8000, saved: 2450, color: '#2a78d6', deadline: `${Number(current.slice(0, 4)) + 1}-01-15` },
       { id: uid(), name: 'Notebook novo', target: 6500, saved: 5200, color: '#6250d6' },
     ],
+    cards: [DEMO_CARD],
     settings: { userName: 'Leonardo', theme: 'system', hideValues: false },
   };
 };

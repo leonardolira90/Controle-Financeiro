@@ -25,7 +25,7 @@ export default function Transactions() {
         inMonth(t, month) &&
         (type === 'all' || t.type === type) &&
         (!categoryId || t.categoryId === categoryId) &&
-        (!accountId || t.accountId === accountId || t.toAccountId === accountId) &&
+        (!accountId || (accountId.startsWith('card:') ? t.cardId === accountId.slice(5) : t.accountId === accountId || t.toAccountId === accountId)) &&
         (status === 'all' || (status === 'paid' ? t.paid : !t.paid)) &&
         (!q || t.description.toLowerCase().includes(q) || (t.notes ?? '').toLowerCase().includes(q)),
     );
@@ -65,8 +65,9 @@ export default function Transactions() {
           {data.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select className="select" value={accountId} onChange={(e) => setAccountId(e.target.value)} aria-label="Conta">
-          <option value="">Todas as contas</option>
+          <option value="">{data.cards.length ? 'Todas as contas e cartões' : 'Todas as contas'}</option>
           {data.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          {data.cards.map((c) => <option key={c.id} value={`card:${c.id}`}>Cartão: {c.name}</option>)}
         </select>
         <select className="select" value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Situação">
           <option value="all">Todas as situações</option>

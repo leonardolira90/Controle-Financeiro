@@ -1,9 +1,11 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Trash2 } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, CreditCard as CardIcon, Trash2 } from 'lucide-react';
 import Modal from './Modal';
 import { useFinance } from '../store/FinanceContext';
 import type { Transaction, TxType } from '../types';
-import { formatCurrency, parseDate, toISODate, todayISO, uid } from '../utils/format';
+import { formatCurrency, formatDate, monthLabel, parseDate, shiftMonth, toISODate, todayISO, uid } from '../utils/format';
+import { invoiceDates, invoiceForDate, isCardPayment } from '../utils/cards';
+import { Segmented } from './ui';
 
 type Repeat = 'none' | 'installments' | 'monthly';
 
@@ -16,9 +18,11 @@ const addMonths = (iso: string, n: number) => {
   return toISODate(target);
 };
 
-export default function TransactionForm({ tx, defaultType = 'expense', onClose }: { tx?: Transaction; defaultType?: TxType; onClose: () => void }) {
-  const { data, save, remove } = useFinance();
+export default function TransactionForm({ tx, defaultType = 'expense', defaultCardId, onClose }: { tx?: Transaction; defaultType?: TxType; defaultCardId?: string; onClose: () => void }) {
+  const { data, save, remove, getCard } = useFinance();
   const editing = !!tx;
+  /** Pagamento de fatura: edita-se como transferência da conta para o cartão */
+  const payment = tx && isCardPayment(tx) ? tx : undefined;
 
   const [type, setType] = useState<TxType>(tx?.type ?? defaultType);
   const [cents, setCents] = useState(tx ? Math.round(tx.amount * 100) : 0);
@@ -32,6 +36,17 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
   const [repeat, setRepeat] = useState<Repeat>('none');
   const [times, setTimes] = useState(2);
   const [error, setError] = useState('');
+  const [payWith, setPayWith] = useState<'account' | 'card'>(
+    (tx?.type === 'expense' && tx.cardId) || (!tx && defaultCardId && data.cards.some((c) => c.id === defaultCardId)) ? 'card' : 'account',
+  );
+  const [cardId, setCardId] = useState(tx?.cardId ?? defaultCardId ?? data.cards[0]?.id ?? '');
+  /** Fatura escolhida manualmente ('' = automática pela data e dia de fechamento) */
+  const [invoice, setInvoice] = useState(tx?.type === 'expense' && tx.cardId ? tx.invoice ?? '' : '');
+
+  const useCard = type === 'expense' && payWith === 'card' && data.cards.length > 0;
+  const card = getCard(cardId);
+  const autoInvoice = card ? invoiceForDate(card, date) : '';
+  const chosenInvoice = invoice || autoInvoice;
 
   const categories = useMemo(
     () => data.categories.filter((c) => c.type === (type === 'income' ? 'income' : 'expense')),
@@ -48,8 +63,9 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
     const amount = cents / 100;
     if (amount <= 0) return setError('Informe um valor maior que zero.');
     if (!description.trim()) return setError('Informe uma descrição.');
-    if (!accountId) return setError('Cadastre uma conta antes de lançar.');
-    if (type === 'transfer' && (!toAccountId || toAccountId === accountId)) return setError('Escolha contas de origem e destino diferentes.');
+    if (useCard && !card) return setError('Selecione o cartão de crédito.');
+    if (!useCard && !accountId) return setError('Cadastre uma conta antes de lançar.');
+    if (type === 'transfer' && !payment && (!toAccountId || toAccountId === accountId)) return setError('Escolha contas de origem e destino diferentes.');
 
     const base: Transaction = {
       id: tx?.id ?? uid(),
@@ -58,11 +74,13 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
       amount,
       date,
       categoryId: type === 'transfer' ? undefined : categoryId || undefined,
-      accountId,
-      toAccountId: type === 'transfer' ? toAccountId : undefined,
-      paid,
+      accountId: useCard ? '' : accountId,
+      toAccountId: type === 'transfer' && !payment ? toAccountId : undefined,
+      paid: useCard ? true : paid,
       notes: notes.trim() || undefined,
       groupId: tx?.groupId,
+      cardId: useCard ? cardId : payment?.cardId,
+      invoice: useCard ? chosenInvoice : payment?.invoice,
     };
 
     if (editing || repeat === 'none') {
@@ -79,7 +97,9 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
         groupId,
         date: addMonths(date, i),
         amount: i === n - 1 ? Math.round((each + remainder) * 100) / 100 : each,
-        paid: i === 0 ? paid : false,
+        // No cartão, cada parcela cai na fatura seguinte
+        invoice: useCard ? shiftMonth(chosenInvoice, i) : undefined,
+        paid: useCard ? true : i === 0 ? paid : false,
         description: repeat === 'installments' ? `${base.description} (${i + 1}/${n})` : base.description,
       }));
       save('transactions', ...items);
@@ -102,7 +122,7 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
 
   return (
     <Modal
-      title={editing ? 'Editar lançamento' : 'Novo lançamento'}
+      title={payment ? 'Pagamento de fatura' : editing ? 'Editar lançamento' : 'Novo lançamento'}
       onClose={onClose}
       footer={
         <>
@@ -117,6 +137,7 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
       }
     >
       <form id="tx-form" onSubmit={submit} className="stack" style={{ gap: 18 }}>
+        {!payment && (
         <div className="type-tabs" role="tablist" aria-label="Tipo de lançamento">
           <button type="button" className={`expense ${type === 'expense' ? 'active' : ''}`} onClick={() => changeType('expense')}>
             <ArrowUpRight size={16} /> Despesa
@@ -128,6 +149,18 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
             <ArrowLeftRight size={16} /> Transferência
           </button>
         </div>
+        )}
+
+        {type === 'expense' && data.cards.length > 0 && (
+          <div className="field">
+            <label>Pagar com</label>
+            <Segmented
+              value={payWith}
+              options={[{ value: 'account', label: 'Conta' }, { value: 'card', label: 'Cartão de crédito' }]}
+              onChange={setPayWith}
+            />
+          </div>
+        )}
 
         <div className="field">
           <label htmlFor="tx-amount">Valor</label>
@@ -160,13 +193,47 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
               </select>
             </div>
           ) : <div className="hide-mobile" />}
-          <div className="field">
-            <label htmlFor="tx-acc">{type === 'transfer' ? 'Conta de origem' : 'Conta'}</label>
-            <select id="tx-acc" className="select" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              {data.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </div>
-          {type === 'transfer' && (
+          {useCard ? (
+            <>
+              <div className="field">
+                <label htmlFor="tx-card">Cartão</label>
+                <select id="tx-card" className="select" value={cardId} onChange={(e) => { setCardId(e.target.value); setInvoice(''); }}>
+                  {data.cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="tx-invoice">Fatura</label>
+                <select id="tx-invoice" className="select" value={chosenInvoice} onChange={(e) => setInvoice(e.target.value === autoInvoice ? '' : e.target.value)}>
+                  {[...new Set([...[-1, 0, 1, 2].map((i) => shiftMonth(autoInvoice, i)), chosenInvoice])].sort().map((key) => (
+                    <option key={key} value={key}>
+                      {monthLabel(key)}{key === autoInvoice ? ' (automática)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {card && (
+                <p className="full muted row" style={{ margin: 0, fontSize: 13, gap: 6 }}>
+                  <CardIcon size={14} /> Fecha em {formatDate(invoiceDates(card, chosenInvoice).closing)} · vence em {formatDate(invoiceDates(card, chosenInvoice).due)}
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="field">
+              <label htmlFor="tx-acc">{type === 'transfer' ? 'Conta de origem' : 'Conta'}</label>
+              <select id="tx-acc" className="select" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                {data.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
+          )}
+          {payment && (
+            <div className="field">
+              <label>Destino</label>
+              <div className="input row" style={{ background: 'var(--surface-2)' }}>
+                <CardIcon size={16} /> Fatura {getCard(payment.cardId)?.name ?? ''} · {payment.invoice ? monthLabel(payment.invoice) : ''}
+              </div>
+            </div>
+          )}
+          {type === 'transfer' && !payment && (
             <div className="field">
               <label htmlFor="tx-to">Conta de destino</label>
               <select id="tx-to" className="select" value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
@@ -175,12 +242,14 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
               </select>
             </div>
           )}
-          <div className="field" style={{ justifyContent: 'flex-end' }}>
-            <label className="switch" style={{ height: 44 }}>
-              <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} />
-              {type === 'income' ? 'Recebido' : type === 'expense' ? 'Pago' : 'Efetivada'}
-            </label>
-          </div>
+          {!useCard && (
+            <div className="field" style={{ justifyContent: 'flex-end' }}>
+              <label className="switch" style={{ height: 44 }}>
+                <input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} />
+                {type === 'income' ? 'Recebido' : type === 'expense' ? 'Pago' : 'Efetivada'}
+              </label>
+            </div>
+          )}
         </div>
 
         {!editing && (
@@ -202,6 +271,7 @@ export default function TransactionForm({ tx, defaultType = 'expense', onClose }
             {repeat === 'installments' && cents > 0 && times >= 2 && (
               <p className="full muted" style={{ margin: 0, fontSize: 13 }}>
                 {times}x de {formatCurrency(Math.floor(cents / times) / 100)} — total de {formatCurrency(cents / 100)}
+                {useCard && chosenInvoice && ` · faturas de ${monthLabel(chosenInvoice)} a ${monthLabel(shiftMonth(chosenInvoice, times - 1))}`}
               </p>
             )}
           </div>

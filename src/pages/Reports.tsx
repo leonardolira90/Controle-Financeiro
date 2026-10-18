@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, CalendarRange, Download, Percent, Printer, Scale } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CalendarRange, CreditCard, Download, Percent, Printer, Scale } from 'lucide-react';
 import Layout from '../components/Layout';
 import { BalanceChart, CashflowChart, CategoryBars, CategoryDonut, SeriesLegend } from '../components/Charts';
-import { EmptyState, Money, Segmented, StatCard } from '../components/ui';
+import { EmptyState, Money, Progress, Segmented, StatCard } from '../components/ui';
 import { useFinance } from '../store/FinanceContext';
 import { byCategory, monthlySeries, monthsBetween, sumTotals } from '../utils/finance';
 import { exportTransactionsCSV } from '../utils/export';
+import { isCardPurchase } from '../utils/cards';
 import { currentMonthKey, formatPercent, monthKey, monthLabel, shiftMonth } from '../utils/format';
 import { useChartColors } from '../utils/theme';
 
@@ -50,6 +51,17 @@ export default function Reports() {
   const cats = useMemo(() => byCategory(txs, data.categories, catType), [txs, data.categories, catType]);
   const donut = useMemo(() => byCategory(txs, data.categories, catType, 6), [txs, data.categories, catType]);
   const catTotal = catType === 'expense' ? totals.expense : totals.income;
+
+  // Compras no cartão de crédito no período (já incluídas nas despesas por categoria)
+  const cardTxs = useMemo(() => txs.filter(isCardPurchase), [txs]);
+  const cardTotal = cardTxs.reduce((s, t) => s + t.amount, 0);
+  const cardCats = useMemo(() => byCategory(cardTxs, data.categories, 'expense'), [cardTxs, data.categories]);
+  const cardByCategory = useMemo(() => new Map(cardCats.map((c) => [c.id, c.value])), [cardCats]);
+  const perCard = data.cards
+    .map((card) => ({ card, value: cardTxs.filter((t) => t.cardId === card.id).reduce((s, t) => s + t.amount, 0) }))
+    .filter((x) => x.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const showCardColumn = catType === 'expense' && cardTotal > 0;
   const avgExpense = totals.expense / months.length;
   const savingsRate = totals.income ? totals.balance / totals.income : 0;
   const periodLabel = startKey === endKey ? monthLabel(startKey) : `${monthLabel(startKey)} a ${monthLabel(endKey)}`;
@@ -138,6 +150,39 @@ export default function Reports() {
           )}
         </div>
 
+        {data.cards.length > 0 && (
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <div className="card-title row" style={{ gap: 8 }}><CreditCard size={17} /> Gastos com cartão de crédito</div>
+                <div className="card-subtitle">Compras no cartão por categoria no período</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <strong style={{ fontSize: 20 }}><Money value={cardTotal} /></strong>
+                <div className="muted" style={{ fontSize: 12.5 }}>{totals.expense ? formatPercent(cardTotal / totals.expense, 1) : '0%'} das despesas</div>
+              </div>
+            </div>
+            {cardCats.length ? (
+              <div className="grid grid-2" style={{ alignItems: 'start' }}>
+                <div className="stack" style={{ gap: 14 }}>
+                  {perCard.map(({ card, value }) => (
+                    <div key={card.id} className="stack" style={{ gap: 6 }}>
+                      <div className="row-between" style={{ fontSize: 14 }}>
+                        <span className="row" style={{ gap: 8, fontWeight: 600 }}><span className="dot" style={{ background: card.color }} />{card.name}</span>
+                        <Money value={value} />
+                      </div>
+                      <Progress value={cardTotal ? value / cardTotal : 0} color={card.color} />
+                    </div>
+                  ))}
+                </div>
+                <CategoryBars data={cardCats.slice(0, 8)} />
+              </div>
+            ) : (
+              <EmptyState icon={CreditCard} title="Sem compras no cartão" text="Nenhuma compra no cartão de crédito neste período." />
+            )}
+          </div>
+        )}
+
         <div className="grid grid-2">
           <div className="card">
             <div className="card-header"><div className="card-title">Resumo mensal</div></div>
@@ -173,18 +218,19 @@ export default function Reports() {
             <div className="table-wrap">
               <table className="table">
                 <thead>
-                  <tr><th>Categoria</th><th className="right">Valor</th><th className="right">%</th><th className="right hide-mobile">Média/mês</th></tr>
+                  <tr><th>Categoria</th><th className="right">Valor</th>{showCardColumn && <th className="right">No cartão</th>}<th className="right">%</th><th className="right hide-mobile">Média/mês</th></tr>
                 </thead>
                 <tbody>
                   {cats.map((c) => (
                     <tr key={c.id}>
                       <td><span className="row" style={{ gap: 8 }}><span className="dot" style={{ background: c.color }} />{c.name}</span></td>
                       <td className="right"><Money value={c.value} /></td>
+                      {showCardColumn && <td className="right text-2"><Money value={cardByCategory.get(c.id) ?? 0} /></td>}
                       <td className="right num">{formatPercent(c.share, 1)}</td>
                       <td className="right hide-mobile"><Money value={c.value / months.length} /></td>
                     </tr>
                   ))}
-                  {!cats.length && <tr><td colSpan={4} className="muted">Sem lançamentos no período.</td></tr>}
+                  {!cats.length && <tr><td colSpan={5} className="muted">Sem lançamentos no período.</td></tr>}
                 </tbody>
               </table>
             </div>

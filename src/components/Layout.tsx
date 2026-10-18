@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  BarChart3, Eye, EyeOff, LayoutDashboard, Menu, Moon, PiggyBank, Plus, Receipt, Settings, Sun, Target, Wallet, TrendingUp,
+  BarChart3, CreditCard, Eye, EyeOff, LayoutDashboard, Menu, Moon, PiggyBank, Plus, Receipt, Settings, Sun, Target, Wallet, TrendingUp,
 } from 'lucide-react';
 import { useFinance } from '../store/FinanceContext';
 import { useUI } from '../store/UIContext';
@@ -12,6 +12,7 @@ const NAV = [
   { to: '/', label: 'Visão geral', short: 'Início', icon: LayoutDashboard },
   { to: '/lancamentos', label: 'Lançamentos', short: 'Lançamentos', icon: Receipt },
   { to: '/contas', label: 'Contas', short: 'Contas', icon: Wallet },
+  { to: '/cartoes', label: 'Cartões de crédito', short: 'Cartões', icon: CreditCard },
   { to: '/orcamentos', label: 'Orçamentos', short: 'Orçamentos', icon: PiggyBank },
   { to: '/metas', label: 'Metas', short: 'Metas', icon: Target },
   { to: '/relatorios', label: 'Relatórios', short: 'Relatórios', icon: BarChart3 },
@@ -19,13 +20,14 @@ const NAV = [
 ];
 
 /** No celular, a barra inferior mostra os atalhos principais; o restante fica em "Mais". */
+const navItem = (to: string) => NAV.find((n) => n.to === to)!;
 const MOBILE_NAV = [
-  NAV[0],
-  NAV[1],
-  NAV[5],
+  navItem('/'),
+  navItem('/lancamentos'),
+  navItem('/relatorios'),
   { to: '/mais', label: 'Mais', short: 'Mais', icon: Menu },
 ];
-const MORE_ROUTES = ['/mais', '/contas', '/orcamentos', '/metas', '/configuracoes'];
+const MORE_ROUTES = ['/mais', '/contas', '/cartoes', '/orcamentos', '/metas', '/configuracoes'];
 
 export default function Layout({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
   const { data, updateSettings } = useFinance();
@@ -121,7 +123,7 @@ export default function Layout({ title, actions, children }: { title: string; ac
         ))}
       </nav>
 
-      {editor && <TransactionForm tx={editor.tx} defaultType={editor.defaultType} onClose={closeTransaction} />}
+      {editor && <TransactionForm tx={editor.tx} defaultType={editor.defaultType} defaultCardId={editor.defaultCardId} onClose={closeTransaction} />}
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
-import type { Account, Category, FinanceData, Settings } from '../types';
+import type { Account, Category, CreditCard, FinanceData, Settings } from '../types';
 import { demoData, emptyData } from './seed';
 
 const STORAGE_KEY = 'financas:data';
 
-type Collection = 'accounts' | 'categories' | 'transactions' | 'budgets' | 'goals';
+type Collection = 'accounts' | 'categories' | 'transactions' | 'budgets' | 'goals' | 'cards';
 type Item<C extends Collection> = FinanceData[C][number];
 
 type Action =
@@ -30,6 +30,7 @@ const reducer = (state: FinanceData, action: Action): FinanceData => {
       // Remove dependências órfãs
       if (action.collection === 'accounts')
         next.transactions = next.transactions.filter((t) => !ids.has(t.accountId) && !(t.toAccountId && ids.has(t.toAccountId)));
+      if (action.collection === 'cards') next.transactions = next.transactions.filter((t) => !(t.cardId && ids.has(t.cardId)));
       if (action.collection === 'categories') {
         next.transactions = next.transactions.map((t) => (t.categoryId && ids.has(t.categoryId) ? { ...t, categoryId: undefined } : t));
         next.budgets = next.budgets.filter((b) => !ids.has(b.categoryId));
@@ -69,6 +70,7 @@ interface FinanceApi {
   replaceAll: (data: FinanceData) => void;
   getCategory: (id?: string) => Category | undefined;
   getAccount: (id?: string) => Account | undefined;
+  getCard: (id?: string) => CreditCard | undefined;
 }
 
 const FinanceContext = createContext<FinanceApi | null>(null);
@@ -93,6 +95,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       replaceAll: (next) => dispatch({ type: 'replace', data: { ...emptyData(), ...next } }),
       getCategory: (id) => data.categories.find((c) => c.id === id),
       getAccount: (id) => data.accounts.find((a) => a.id === id),
+      getCard: (id) => data.cards.find((c) => c.id === id),
     }),
     [data],
   );

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, Clock, Landmark, Scale } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, Clock, CreditCard, Landmark, Scale } from 'lucide-react';
 import Layout from '../components/Layout';
 import { BalanceChart, CashflowChart, CategoryDonut, SeriesLegend } from '../components/Charts';
 import { ACCOUNT_ICONS, IconBadge } from '../components/Icons';
@@ -9,7 +9,8 @@ import { EmptyState, Money, MonthPicker, Progress, StatCard } from '../component
 import { useFinance } from '../store/FinanceContext';
 import { useUI } from '../store/UIContext';
 import { accountBalance, byCategory, inMonth, monthlySeries, sumTotals, totalBalance } from '../utils/finance';
-import { formatPercent, monthLabel, shiftMonth, todayISO } from '../utils/format';
+import { formatDate, formatPercent, monthLabel, shiftMonth, todayISO } from '../utils/format';
+import { cardUsage, currentInvoice, INVOICE_STATUS_LABEL, invoiceSummary } from '../utils/cards';
 import { useChartColors } from '../utils/theme';
 
 export default function Dashboard() {
@@ -157,6 +158,36 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
+
+            {data.cards.length > 0 && (
+              <div className="card">
+                <div className="card-header">
+                  <div className="card-title">Cartões de crédito</div>
+                  <Link to="/cartoes" className="btn btn-sm btn-ghost">Ver faturas</Link>
+                </div>
+                <div className="stack" style={{ gap: 14 }}>
+                  {data.cards.map((c) => {
+                    const inv = invoiceSummary(c, data.transactions, currentInvoice(c));
+                    const { available } = cardUsage(c, data.transactions);
+                    return (
+                      <div key={c.id} className="row">
+                        <IconBadge icon={CreditCard} color={c.color} size={36} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600 }}>{c.name}</div>
+                          <div className="muted" style={{ fontSize: 12.5 }}>
+                            Fatura {INVOICE_STATUS_LABEL[inv.status].toLowerCase()} · vence {formatDate(inv.due)}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <Money value={inv.total} className="expense" />
+                          <div className="muted" style={{ fontSize: 12 }}>Disp. <Money value={available} /></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="card">
               <div className="card-header">

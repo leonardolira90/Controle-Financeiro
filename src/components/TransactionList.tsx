@@ -1,28 +1,36 @@
-import { ArrowLeftRight, Clock } from 'lucide-react';
+import { ArrowLeftRight, Clock, CreditCard } from 'lucide-react';
 import { useFinance } from '../store/FinanceContext';
 import { useUI } from '../store/UIContext';
 import type { Transaction } from '../types';
-import { formatDayHeader } from '../utils/format';
+import { formatDayHeader, monthLabel } from '../utils/format';
 import { CategoryIcon, IconBadge } from './Icons';
 import { Money } from './ui';
 
 function TransactionRow({ tx }: { tx: Transaction }) {
-  const { getCategory, getAccount } = useFinance();
+  const { getCategory, getAccount, getCard } = useFinance();
   const { openTransaction } = useUI();
   const cat = getCategory(tx.categoryId);
   const acc = getAccount(tx.accountId);
   const to = getAccount(tx.toAccountId);
+  const card = getCard(tx.cardId);
+  const source = card && tx.type === 'expense' ? card.name : acc?.name ?? '—';
+  const meta = tx.type !== 'transfer'
+    ? `${cat?.name ?? 'Sem categoria'} · ${source}`
+    : card
+      ? `${acc?.name ?? '—'} → fatura ${card.name}${tx.invoice ? ` (${monthLabel(tx.invoice, true)})` : ''}`
+      : `${acc?.name ?? '—'} → ${to?.name ?? '—'}`;
   const sign = tx.type === 'income' ? 1 : tx.type === 'expense' ? -1 : 0;
 
   return (
     <button className="tx-item" onClick={() => openTransaction(tx)}>
       {tx.type === 'transfer'
-        ? <IconBadge icon={ArrowLeftRight} color="#2a78d6" />
+        ? <IconBadge icon={card ? CreditCard : ArrowLeftRight} color={card?.color ?? '#2a78d6'} />
         : <CategoryIcon icon={cat?.icon} color={cat?.color ?? '#8b8f98'} />}
       <div className="tx-main">
         <div className="tx-desc">{tx.description}</div>
         <div className="tx-meta">
-          <span>{tx.type === 'transfer' ? `${acc?.name ?? '—'} → ${to?.name ?? '—'}` : `${cat?.name ?? 'Sem categoria'} · ${acc?.name ?? '—'}`}</span>
+          <span>{meta}</span>
+          {card && tx.type === 'expense' && <span className="badge badge-neutral"><CreditCard size={11} />Cartão</span>}
           {!tx.paid && <span className="badge badge-pending"><Clock size={11} />Pendente</span>}
         </div>
       </div>

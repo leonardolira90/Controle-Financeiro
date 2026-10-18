@@ -5,13 +5,14 @@ import { currentMonthKey } from '../utils/format';
 interface TxEditorState {
   tx?: Transaction;
   defaultType?: TxType;
+  defaultCardId?: string;
 }
 
 interface UIApi {
   month: string;
   setMonth: (key: string) => void;
   editor: TxEditorState | null;
-  openTransaction: (tx?: Transaction, defaultType?: TxType) => void;
+  openTransaction: (tx?: Transaction, defaultType?: TxType, defaultCardId?: string) => void;
   closeTransaction: () => void;
 }
 
@@ -21,7 +22,10 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const [month, setMonth] = useState(currentMonthKey);
   const [editor, setEditor] = useState<TxEditorState | null>(null);
 
-  const openTransaction = useCallback((tx?: Transaction, defaultType?: TxType) => setEditor({ tx, defaultType }), []);
+  const openTransaction = useCallback(
+    (tx?: Transaction, defaultType?: TxType, defaultCardId?: string) => setEditor({ tx, defaultType, defaultCardId }),
+    [],
+  );
   const closeTransaction = useCallback(() => setEditor(null), []);
 
   const api = useMemo(

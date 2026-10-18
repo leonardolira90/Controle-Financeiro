@@ -22,7 +22,7 @@ const TYPE_LABEL = { income: 'Receita', expense: 'Despesa', transfer: 'Transfer�
 
 /** Exporta lançamentos em CSV (separador ";" e decimal com vírgula, compatível com Excel em pt-BR). */
 export const exportTransactionsCSV = (txs: Transaction[], data: FinanceData, filename = 'lancamentos.csv') => {
-  const header = ['Data', 'Tipo', 'Descrição', 'Categoria', 'Conta', 'Conta destino', 'Valor', 'Situação', 'Observações'];
+  const header = ['Data', 'Tipo', 'Descrição', 'Categoria', 'Conta', 'Conta destino', 'Cartão', 'Fatura', 'Valor', 'Situação', 'Observações'];
   const rows = [...txs]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((t) => [
@@ -32,6 +32,8 @@ export const exportTransactionsCSV = (txs: Transaction[], data: FinanceData, fil
       data.categories.find((c) => c.id === t.categoryId)?.name ?? '',
       data.accounts.find((a) => a.id === t.accountId)?.name ?? '',
       data.accounts.find((a) => a.id === t.toAccountId)?.name ?? '',
+      data.cards.find((c) => c.id === t.cardId)?.name ?? '',
+      t.invoice ? `${t.invoice.slice(5, 7)}/${t.invoice.slice(0, 4)}` : '',
       (t.type === 'expense' ? -t.amount : t.amount).toFixed(2).replace('.', ','),
       t.paid ? 'Efetivado' : 'Pendente',
       t.notes ?? '',
